@@ -1,0 +1,121 @@
+# llama.cpp server with Gemma 4 E4B QAT (Quantization-Aware Training)
+#
+# Model:   unsloth/gemma-4-E4B-it-qat-GGUF
+# Quant:   UD-Q2_K_XL  (mobile mixture: 2-bit embeddings, 4-bit core)
+#          3.22 GB — fits in 4GB VRAM with room for KV cache
+#
+# Hardware: 4GB VRAM + 16GB RAM  (20 GB total — well above E4B QAT's 5GB requirement)
+#
+# Multi-modal: mmproj-BF16 (auto-downloaded via -hf)
+#              - Image analysis via the model's vision encoder
+#              - Audio transcription via the model's audio encoder
+#
+# MTP: Multi-Token Prediction (speculative decoding)
+#      Auto-downloaded drafter (mtp-gemma-4-E4B-it.gguf, 59.7 MB)
+#      Speeds up inference by 1.4x-2.2x without quality loss
+#
+# Endpoints (all on port 8080):
+#   /v1/chat/completions  — OpenAI-compatible
+#   /v1/messages          — Anthropic-compatible
+#   /v1/models            — List models
+#   /health               — Health check
+#   /                     — Built-in Web UI
+
+services:
+  llama:
+    # Official Docker image from GitHub Container Registry
+    # Tags: server (CPU), server-cuda (NVIDIA), server-rocm (AMD), server-vulkan (cross)
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: borrelle-llama
+
+    # Port mapping: host:container
+    ports:
+      - "8080:8080"  # OpenAI + Anthropic API endpoint
+
+    # Mount the models directory so downloads persist across restarts
+    volumes:
+      - ./models:/models
+
+    environment:
+      # Tell llama.cpp where to save downloaded models (used by -hf)
+      - LLAMA_CACHE=/models
+
+      # Expose GPU to container (requires nvidia-container-toolkit)
+      - NVIDIA_VISIBLE_DEVICES=all
+
+    # GPU device reservation
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    # -------------------------------------------------------------------------
+    # llama-server command arguments
+    # -------------------------------------------------------------------------
+    command:
+      # --- Model loading ---
+      # -hf downloads the model + mmproj + MTP drafter from HuggingFace
+      # Format: -hf <repo>:<quant_tag>
+      # UD-Q2_K_XL = Unsloth Dynamic 2-bit mobile quant (3.22 GB)
+      # The mmproj and MTP drafter are auto-detected from the repo
+      - "-hf"
+      - "unsloth/gemma-4-E4B-it-qat-GGUF:UD-Q2_K_XL"
+
+      # --- Server config ---
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      # --alias: model name shown in /v1/models and used as model= in requests
+      # Using the official Gemma 4 name so client code matches upstream docs
+      - "--alias"
+      - "gemma-4-E4B-it-qat"
+
+      # --- GPU offloading ---
+      # 999 = "put every possible layer on GPU"
+      # Clamped to the model's actual 42 layers by llama.cpp
+      # E4B Q2 (3.22 GB) fits in 4GB VRAM with room for KV cache
+      - "--n-gpu-layers"
+      - "999"
+
+      # --- Multi-Token Prediction (disabled for now) ---
+      # MTP causes crashes on GTX 1050 when combined with flash attention.
+      # TODO: re-enable after baseline is validated:
+      #   - "--spec-type"
+      #   - "draft-mtp"
+      #   - "--spec-draft-n-max"
+      #   - "4"
+
+      # --- Context window ---
+      # E4B supports up to 128K tokens natively
+      # Starting at 65536 (64K) to leave VRAM headroom
+      # Can increase to 128K after validation
+      - "-c"
+      - "65536"
+
+      # --- KV cache (FP16 default) ---
+      # Q8_0 KV cache would halve memory but requires flash attention.
+      # GTX 1050 doesn't support the flash attention kernel → stick to FP16.
+      # TODO: switch to -ctk q8_0 -ctv q8_0 + --flash-attn on if GPU supports it.
+      # Default is f16 — removing the flags to use defaults.
+
+      # --- Thinking / Reasoning ---
+      # Reasoning is controlled per-request via the `thinking` field in the
+      # Anthropic /v1/messages payload. No global flag needed.
+
+      # --- Sampling parameters (recommended by Unsloth/Google) ---
+      - "--temp"
+      - "1.0"
+      - "--top-p"
+      - "0.95"
+      - "--top-k"
+      - "64"
+
+      # --- mmproj on CPU ---
+      # The mmproj is used only once per image/audio during encoding.
+      # Keeping it on CPU saves ~1.2 GB of VRAM for model layers + KV cache.
+      # The encoding is a one-time cost, not a per-token bottleneck.
+      - "--no-mmproj-offload"

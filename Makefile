@@ -1,30 +1,28 @@
 .PHONY: up down restart ps logs pull \
         curl-text curl-thinking curl-image curl-anthropic curl-health curl-models \
-        agent agent-interactive agent-ask
+        matilda matilda-reasoning matilda-ask
 
 # ─── Container lifecycle ───────────────────────────────────────────────────
 
 up:
-	docker compose -f backend/docker/docker-compose.yml up -d
+	docker compose -f docker/docker-compose.yml up -d
 
 down:
-	docker compose -f backend/docker/docker-compose.yml down
+	docker compose -f docker/docker-compose.yml down
 
 restart:
-	docker compose -f backend/docker/docker-compose.yml restart
+	docker compose -f docker/docker-compose.yml restart
 
 ps:
-	docker compose -f backend/docker/docker-compose.yml ps
+	docker compose -f docker/docker-compose.yml ps
 
 logs:
-	docker compose -f backend/docker/docker-compose.yml logs -f
+	docker compose -f docker/docker-compose.yml logs -f
 
 pull:
-	docker compose -f backend/docker/docker-compose.yml pull
+	docker compose -f docker/docker-compose.yml pull
 
 # ─── Test the model ────────────────────────────────────────────────────────
-
-# All payloads are single-line JSON for /bin/sh (dash) compatibility
 
 MODEL = gemma-4-E4B-it-qat
 API   = http://localhost:8080
@@ -39,8 +37,6 @@ curl-thinking:
 		-H "Content-Type: application/json" \
 		-d '{"model": "$(MODEL)", "messages": [{"role": "user", "content": "What is 37 * 482? Show your reasoning step by step."}], "stream": false, "max_tokens": 512}' | python3 -m json.tool
 
-# Usage: make curl-image IMG=/full/path/to/image.jpg
-# Drag-and-drop the file path works directly
 curl-image:
 	@if [ -z "$(IMG)" ]; then \
 		echo "Usage: make curl-image IMG=path/to/image.jpg"; \
@@ -68,27 +64,26 @@ curl-health:
 curl-models:
 	curl -s $(API)/v1/models | python3 -m json.tool
 
-# ─── Agent CLI ──────────────────────────────────────────────────────────────
+# ─── matilda CLI ───────────────────────────────────────────────────────────
 
 VENV = backend/.venv
-AGENT = $(VENV)/bin/python backend/agent_cli.py
 
 # Interactive REPL mode
-agent agent-interactive:
-	$(AGENT)
-agent-reasoning:
-	$(AGENT) --reasoning
+matilda:
+	$(VENV)/bin/python -m matilda_desktop.cli
+matilda-reasoning:
+	$(VENV)/bin/python -m matilda_desktop.cli --reasoning
 
-# Single question mode: make agent-ask Q="your question here"
-agent-ask:
+# Single question: make matilda-ask Q="your question here"
+matilda-ask:
 	@if [ -z "$(Q)" ]; then \
-		echo "Usage: make agent-ask Q=\"your question here\""; \
+		echo "Usage: make matilda-ask Q=\"your question here\""; \
 		exit 1; \
 	fi
-	$(AGENT) "$(Q)"
-agent-ask-r:
+	$(VENV)/bin/python -m matilda_desktop.cli "$(Q)"
+matilda-ask-r:
 	@if [ -z "$(Q)" ]; then \
-		echo "Usage: make agent-ask-r Q=\"your question here\""; \
+		echo "Usage: make matilda-ask-r Q=\"your question here\""; \
 		exit 1; \
 	fi
-	$(AGENT) --reasoning "$(Q)"
+	$(VENV)/bin/python -m matilda_desktop.cli --reasoning "$(Q)"

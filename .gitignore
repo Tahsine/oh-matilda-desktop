@@ -23,7 +23,11 @@ venv/
 Thumbs.db
 
 # Docker
+docker/models/
 backend/docker/models/
+
+# Agent artifacts
+home/
 
 # Plan
 PLAN.md

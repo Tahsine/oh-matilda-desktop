@@ -26,7 +26,7 @@ services:
     # Official Docker image from GitHub Container Registry
     # Tags: server (CPU), server-cuda (NVIDIA), server-rocm (AMD), server-vulkan (cross)
     image: ghcr.io/ggml-org/llama.cpp:server-cuda
-    container_name: borrelle-llama
+    container_name: matilda-llama
 
     # Port mapping: host:container
     ports:

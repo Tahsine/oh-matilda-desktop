@@ -1,5 +1,5 @@
 """
-Interactive CLI agent with streaming support.
+oh-matilda desktop — CLI agent.
 
 Usage:
     backend/.venv/bin/python backend/agent_cli.py
@@ -16,7 +16,7 @@ from langchain_core._api.beta_decorator import LangChainBetaWarning
 warnings.filterwarnings("ignore", message=".*is being sunset.*")
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
-from langchain.agents import create_agent
+from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_community.tools import DuckDuckGoSearchRun
 
@@ -48,7 +48,7 @@ def make_model(reasoning: bool = False):
 
 def make_agent(reasoning: bool = False):
     model = make_model(reasoning=reasoning)
-    return create_agent(
+    return create_deep_agent(
         model=model,
         tools=[get_weather, search],
         system_prompt=(
@@ -61,7 +61,6 @@ def make_agent(reasoning: bool = False):
 # ─── Streaming runner ────────────────────────────────────────────────────────
 
 def run_question(messages: list, agent: object) -> list:
-    """Run a question and stream results. Returns updated messages."""
     stream = agent.stream_events(
         {"messages": messages},
         version="v3",
@@ -89,7 +88,7 @@ def run_question(messages: list, agent: object) -> list:
 # ─── CLI ─────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Agent CLI with streaming")
+    parser = argparse.ArgumentParser(description="oh-matilda CLI agent")
     parser.add_argument("question", nargs="*", help="Single question to ask")
     parser.add_argument("--reasoning", "-r", action="store_true",
                         help="Enable thinking/reasoning")
@@ -106,7 +105,7 @@ def main():
         run_question(messages, agent)
         return
 
-    print(f"Agent CLI (streaming){tag}. Type 'exit' to quit.\n")
+    print(f"oh-matilda (streaming){tag}. Type 'exit' to quit.\n")
     messages = []
     while True:
         try:

@@ -12,4 +12,5 @@ dependencies = [
 matilda = "matilda_desktop.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["matilda_desktop*"]

@@ -24,10 +24,28 @@ Thumbs.db
 
 # Docker
 docker/models/
-backend/docker/models/
+backend/
 
 # Agent artifacts
 home/
 
 # Plan
 PLAN.md
+
+# Node / npm
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+*.AppImage
+*.deb
+*.rpm
+*.dmg
+*.app

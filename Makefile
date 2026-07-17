@@ -64,9 +64,17 @@ curl-health:
 curl-models:
 	curl -s $(API)/v1/models | python3 -m json.tool
 
+# ─── Tauri desktop ───────────────────────────────────────────────────────────
+
+tauri-dev:
+	npm run tauri dev
+
+tauri-build:
+	npm run tauri build
+
 # ─── matilda CLI ───────────────────────────────────────────────────────────
 
-VENV = backend/.venv
+VENV = .venv
 
 # Interactive REPL mode
 matilda:
